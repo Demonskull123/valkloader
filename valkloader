@@ -1,0 +1,866 @@
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
+local RunService = game:GetService("RunService")
+local Player = Players.LocalPlayer
+
+local CACHE_BUST = tostring(math.floor(os.clock() * 1e6))
+local function rawUrl(path)
+	return path .. "?v=" .. CACHE_BUST
+end
+local LOADSTRINGS = {
+	VEF = rawUrl("https://raw.githubusercontent.com/Demonskull123/vef/refs/heads/main/Valkyrie.Vef.txt"),
+	VRF = rawUrl("https://raw.githubusercontent.com/Demonskull123/vrf/refs/heads/main/Valkyrie_Vrf.txt"),
+	["MPS 4 Side"] = rawUrl("https://raw.githubusercontent.com/Demonskull123/mps4aside/refs/heads/main/Valkyrie_MPS4aside.txt"),
+	["MPS Futsal"] = rawUrl("https://raw.githubusercontent.com/Demonskull123/mpsfutsal/refs/heads/main/Valkyrie_MPS_Futsal.txt"),
+	PSL = rawUrl("https://raw.githubusercontent.com/Demonskull123/psl/refs/heads/main/Valkyrie_PSL.txt"),
+	CBM = rawUrl("https://raw.githubusercontent.com/Demonskull123/cbm/refs/heads/main/Valkyrie_CBM.txt"),
+	TRS = rawUrl("https://raw.githubusercontent.com/Demonskull123/trs/refs/heads/main/Valkyrie_TRS.txt"),
+	TCS = rawUrl("https://raw.githubusercontent.com/Demonskull123/tcs/refs/heads/main/Valkyrie_TCS.txt"),
+	MMP = rawUrl("https://raw.githubusercontent.com/Demonskull123/mmp/refs/heads/main/Valkyrie_MMP.txt"),
+	OFA = rawUrl("https://raw.githubusercontent.com/Demonskull123/ofa/refs/heads/main/Valkyrie_OFA.txt"),
+	RF24 = rawUrl("https://raw.githubusercontent.com/Demonskull123/rf24/refs/heads/main/rf24"),
+	["TPS Ulti"] = rawUrl("https://raw.githubusercontent.com/Demonskull123/tpsultimate/refs/heads/main/Tpsulti"),
+}
+
+local GamesList = {
+	"VEF", "VRF", "RF24", "TPS Ulti", "MPS 4 Side", "MPS Futsal", "PSL", "CBM", "TRS", "TCS", "MMP", "OFA"
+}
+
+local C = {
+	void = Color3.fromRGB(4, 2, 10),
+	deep = Color3.fromRGB(10, 4, 22),
+	panel = Color3.fromRGB(14, 6, 30),
+	surface = Color3.fromRGB(22, 10, 42),
+	hover = Color3.fromRGB(48, 22, 82),
+	line = Color3.fromRGB(90, 40, 140),
+	moon = Color3.fromRGB(230, 220, 255),
+	lilac = Color3.fromRGB(190, 160, 255),
+	violet = Color3.fromRGB(140, 70, 255),
+	orchid = Color3.fromRGB(180, 90, 255),
+	glow = Color3.fromRGB(200, 140, 255),
+	aura = Color3.fromRGB(160, 100, 255),
+	text = Color3.fromRGB(245, 240, 255),
+	dim = Color3.fromRGB(160, 140, 190),
+	mute = Color3.fromRGB(100, 80, 130),
+	good = Color3.fromRGB(140, 255, 190),
+	bad = Color3.fromRGB(255, 90, 130),
+}
+
+local function font(name, weight)
+	local ok, f = pcall(function()
+		return Font.new("rbxasset://fonts/families/" .. name .. ".json", weight)
+	end)
+	if ok then return f end
+	return Font.new("rbxasset://fonts/families/SourceSansPro.json", weight)
+end
+local F_R = font("BuilderSans", Enum.FontWeight.Regular)
+local F_M = font("BuilderSans", Enum.FontWeight.Medium)
+local F_S = font("BuilderSans", Enum.FontWeight.SemiBold)
+local F_B = font("BuilderSans", Enum.FontWeight.Bold)
+local F_D = font("Michroma", Enum.FontWeight.Regular)
+
+local function tw(obj, t, props, style, dir)
+	local ti = TweenInfo.new(t, style or Enum.EasingStyle.Quart, dir or Enum.EasingDirection.Out)
+	local twn = TweenService:Create(obj, ti, props)
+	twn:Play()
+	return twn
+end
+local function corner(o, r)
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(0, r)
+	c.Parent = o
+	return c
+end
+local function stroke(o, col, th, tr)
+	local s = Instance.new("UIStroke")
+	s.Color = col
+	s.Thickness = th or 1
+	s.Transparency = tr or 0
+	s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	s.Parent = o
+	return s
+end
+local function grad(o, c0, c1, rot)
+	local g = Instance.new("UIGradient")
+	g.Color = ColorSequence.new(c0, c1)
+	g.Rotation = rot or 90
+	g.Parent = o
+	return g
+end
+local function fr(parent, z)
+	local f = Instance.new("Frame")
+	f.BackgroundTransparency = 1
+	f.BorderSizePixel = 0
+	f.ZIndex = z or 2
+	f.Parent = parent
+	return f
+end
+local function bx(parent, col, z)
+	local f = fr(parent, z)
+	f.BackgroundColor3 = col
+	f.BackgroundTransparency = 0
+	return f
+end
+local function tx(parent, text, face, size, col)
+	local t = Instance.new("TextLabel")
+	t.BackgroundTransparency = 1
+	t.Text = text
+	t.FontFace = face
+	t.TextSize = size
+	t.TextColor3 = col
+	t.TextXAlignment = Enum.TextXAlignment.Left
+	t.TextYAlignment = Enum.TextYAlignment.Center
+	t.Parent = parent
+	return t
+end
+
+local function glowLayers(inst, col, layers, step, rad, start)
+	layers = layers or 3
+	step = step or 3
+	rad = rad or 14
+	start = start or 0.4
+	local out = {}
+	for i = 1, layers do
+		local g = Instance.new("Frame")
+		g.AnchorPoint = Vector2.new(0.5, 0.5)
+		g.Position = UDim2.fromScale(0.5, 0.5)
+		g.Size = UDim2.new(1, i * step * 2, 1, i * step * 2)
+		g.BackgroundTransparency = 1
+		g.BorderSizePixel = 0
+		g.ZIndex = math.max(1, (inst.ZIndex or 2) - 1)
+		g.Parent = inst
+		corner(g, rad + i * step)
+		out[i] = stroke(g, col, 1.3, start + i * 0.13)
+	end
+	return out
+end
+
+local function fadeIn(obj, delay, dur, fromY)
+	obj.Visible = true
+	if obj:IsA("TextLabel") or obj:IsA("TextButton") then
+		local ot = obj.TextTransparency
+		obj.TextTransparency = 1
+		if obj:IsA("TextButton") then
+			obj.BackgroundTransparency = 1
+		end
+		task.delay(delay or 0, function()
+			if not obj.Parent then return end
+			tw(obj, dur or 0.4, { TextTransparency = ot }, Enum.EasingStyle.Quint)
+			if obj:IsA("TextButton") and obj.BackgroundColor3 then
+				tw(obj, dur or 0.4, { BackgroundTransparency = 0.05 }, Enum.EasingStyle.Quint)
+			end
+		end)
+	elseif obj:IsA("Frame") or obj:IsA("ImageLabel") then
+		local bt = obj.BackgroundTransparency
+		local pos = obj.Position
+		obj.BackgroundTransparency = 1
+		if fromY then
+			obj.Position = pos + UDim2.fromOffset(0, fromY)
+		end
+		task.delay(delay or 0, function()
+			if not obj.Parent then return end
+			tw(obj, dur or 0.45, { BackgroundTransparency = bt, Position = pos }, Enum.EasingStyle.Quint)
+		end)
+	end
+end
+
+local function makeMoon(parent, size, z)
+	local hold = fr(parent, z)
+	hold.Size = UDim2.fromOffset(size, size)
+
+	local auraRing = fr(hold, z)
+	auraRing.AnchorPoint = Vector2.new(0.5, 0.5)
+	auraRing.Position = UDim2.fromScale(0.5, 0.5)
+	auraRing.Size = UDim2.fromOffset(size * 1.5, size * 1.5)
+	corner(auraRing, size)
+	local auraS = stroke(auraRing, C.aura, 1.2, 0.5)
+
+	local moon = bx(hold, C.moon, z + 2)
+	moon.AnchorPoint = Vector2.new(0.5, 0.5)
+	moon.Position = UDim2.fromScale(0.5, 0.5)
+	moon.Size = UDim2.fromOffset(size, size)
+	corner(moon, size)
+	grad(moon, Color3.fromRGB(255, 250, 255), Color3.fromRGB(180, 160, 230), 135)
+	stroke(moon, C.lilac, 1, 0.35)
+
+	local shadow = bx(hold, C.void, z + 3)
+	shadow.AnchorPoint = Vector2.new(0.5, 0.5)
+	shadow.Position = UDim2.new(0.5, size * 0.18, 0.5, -size * 0.08)
+	shadow.Size = UDim2.fromOffset(size * 0.78, size * 0.78)
+	shadow.BackgroundTransparency = 0.08
+	corner(shadow, size)
+
+	local spark = bx(hold, C.lilac, z + 4)
+	spark.AnchorPoint = Vector2.new(0.5, 0.5)
+	spark.Position = UDim2.new(0.5, -size * 0.22, 0.5, -size * 0.2)
+	spark.Size = UDim2.fromOffset(size * 0.12, size * 0.12)
+	spark.BackgroundTransparency = 0.25
+	corner(spark, size)
+
+	local t0 = 0
+	local conn = RunService.RenderStepped:Connect(function(dt)
+		if not hold.Parent then return end
+		t0 += dt
+		local pulse = 0.5 + math.sin(t0 * 1.5) * 0.5
+		auraRing.Size = UDim2.fromOffset(size * (1.35 + pulse * 0.3), size * (1.35 + pulse * 0.3))
+		auraS.Transparency = 0.3 + pulse * 0.45
+		spark.BackgroundTransparency = 0.1 + pulse * 0.4
+	end)
+	hold.Destroying:Connect(function()
+		pcall(function() conn:Disconnect() end)
+	end)
+	return hold
+end
+
+local function spawnStars(parent, count, z)
+	local stars = {}
+	for i = 1, count do
+		local s = bx(parent, C.lilac, z)
+		local sz = math.random(1, 3)
+		s.Size = UDim2.fromOffset(sz, sz)
+		s.Position = UDim2.new(math.random(), 0, math.random(), 0)
+		s.BackgroundTransparency = 1
+		s.AnchorPoint = Vector2.new(0.5, 0.5)
+		corner(s, 10)
+		stars[i] = { f = s, phase = math.random() * math.pi * 2, speed = 0.5 + math.random() * 1.6, delay = math.random() * 0.8 }
+	end
+	local t0 = 0
+	local conn = RunService.RenderStepped:Connect(function(dt)
+		if not parent.Parent then return end
+		t0 += dt
+		for _, st in ipairs(stars) do
+			if st.f.Parent and t0 > st.delay then
+				local a = 0.2 + (math.sin(t0 * st.speed + st.phase) * 0.5 + 0.5) * 0.6
+				st.f.BackgroundTransparency = 1 - a
+			end
+		end
+	end)
+	parent.Destroying:Connect(function()
+		pcall(function() conn:Disconnect() end)
+	end)
+end
+
+for _, root in ipairs({ (gethui and gethui()) or nil, CoreGui, Player:FindFirstChild("PlayerGui") }) do
+	if root then
+		pcall(function()
+			for _, g in ipairs(root:GetChildren()) do
+				if g:IsA("ScreenGui") and (g.Name == "Valkyrie_Loader" or g.Name == "KaivenLoader") then
+					g:Destroy()
+				end
+			end
+		end)
+	end
+end
+
+local function mount(name)
+	local sg = Instance.new("ScreenGui")
+	sg.Name = name
+	sg.ResetOnSpawn = false
+	sg.IgnoreGuiInset = true
+	sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	sg.DisplayOrder = 100000
+	local ok = pcall(function() sg.Parent = CoreGui end)
+	if not ok then sg.Parent = Player:WaitForChild("PlayerGui") end
+	return sg
+end
+
+local gui = mount("Valkyrie_Loader")
+local closing = false
+
+local winW, winH = 400, 236
+local main = bx(gui, C.panel, 2)
+main.BackgroundTransparency = 1
+main.Name = "Main"
+main.Size = UDim2.fromOffset(0, 0)
+main.Position = UDim2.fromScale(0.5, 0.5)
+main.AnchorPoint = Vector2.new(0.5, 0.5)
+main.Visible = false
+main.ClipsDescendants = true
+main.Active = true
+corner(main, 16)
+local mainStroke = stroke(main, C.violet, 1.8, 1)
+local mainGlows = glowLayers(main, C.aura, 4, 4, 16, 0.9)
+
+local night = bx(main, C.void, 2)
+night.Size = UDim2.fromScale(1, 1)
+night.BackgroundTransparency = 1
+corner(night, 16)
+grad(night, Color3.fromRGB(18, 6, 40), Color3.fromRGB(4, 1, 12), 160)
+spawnStars(night, 26, 3)
+
+local haze = bx(main, C.violet, 3)
+haze.Size = UDim2.new(1, 0, 0.45, 0)
+haze.Position = UDim2.fromScale(0, 0.55)
+haze.BackgroundTransparency = 1
+corner(haze, 16)
+grad(haze, Color3.fromRGB(80, 20, 160), Color3.fromRGB(20, 5, 50), 90)
+
+local top = bx(main, C.deep, 10)
+top.Size = UDim2.new(1, 0, 0, 52)
+top.BackgroundTransparency = 1
+stroke(top, C.line, 1, 1)
+grad(top, Color3.fromRGB(28, 10, 55), Color3.fromRGB(12, 4, 28), 90)
+
+local moon = makeMoon(top, 30, 12)
+moon.Position = UDim2.fromOffset(14, 11)
+moon.Visible = false
+
+local title = tx(top, "VALKYRIE", F_D, 17, C.moon)
+title.Size = UDim2.new(0, 180, 0, 22)
+title.Position = UDim2.fromOffset(54, 8)
+title.ZIndex = 12
+title.TextTransparency = 1
+
+local sub = tx(top, "moon night loader", F_R, 11, C.lilac)
+sub.Size = UDim2.new(0, 160, 0, 14)
+sub.Position = UDim2.fromOffset(54, 30)
+sub.ZIndex = 12
+sub.TextTransparency = 1
+
+local closeBtn = Instance.new("TextButton")
+closeBtn.Size = UDim2.fromOffset(30, 30)
+closeBtn.Position = UDim2.new(1, -42, 0.5, -15)
+closeBtn.BackgroundColor3 = C.surface
+closeBtn.BackgroundTransparency = 1
+closeBtn.Text = "x"
+closeBtn.FontFace = F_B
+closeBtn.TextSize = 16
+closeBtn.TextColor3 = C.dim
+closeBtn.TextTransparency = 1
+closeBtn.BorderSizePixel = 0
+closeBtn.ZIndex = 14
+closeBtn.Parent = top
+corner(closeBtn, 9)
+stroke(closeBtn, C.line, 1, 1)
+
+local content = fr(main, 4)
+content.Size = UDim2.new(1, -28, 1, -68)
+content.Position = UDim2.fromOffset(14, 60)
+
+local gameLbl = tx(content, "SELECT GAME", F_S, 11, C.lilac)
+gameLbl.Size = UDim2.new(1, 0, 0, 14)
+gameLbl.Position = UDim2.fromOffset(2, 2)
+gameLbl.ZIndex = 5
+gameLbl.TextTransparency = 1
+
+local dropFrame = bx(content, C.surface, 5)
+dropFrame.Size = UDim2.new(0.66, 0, 0, 36)
+dropFrame.Position = UDim2.fromOffset(0, 22)
+dropFrame.BackgroundTransparency = 1
+corner(dropFrame, 11)
+local dropStroke = stroke(dropFrame, C.line, 1.2, 1)
+grad(dropFrame, Color3.fromRGB(30, 12, 55), Color3.fromRGB(18, 8, 40), 90)
+
+local dropBtn = Instance.new("TextButton")
+dropBtn.Text = "  Choose your realm..."
+dropBtn.FontFace = F_M
+dropBtn.TextSize = 13
+dropBtn.TextColor3 = C.mute
+dropBtn.TextTransparency = 1
+dropBtn.TextXAlignment = Enum.TextXAlignment.Left
+dropBtn.BackgroundTransparency = 1
+dropBtn.Size = UDim2.new(1, -34, 1, 0)
+dropBtn.Position = UDim2.fromOffset(8, 0)
+dropBtn.ZIndex = 6
+dropBtn.Parent = dropFrame
+
+local dropArrow = tx(dropFrame, "v", F_B, 12, C.orchid)
+dropArrow.Size = UDim2.fromOffset(24, 36)
+dropArrow.Position = UDim2.new(1, -28, 0, 0)
+dropArrow.TextXAlignment = Enum.TextXAlignment.Center
+dropArrow.ZIndex = 6
+dropArrow.TextTransparency = 1
+
+local dropList = bx(content, C.deep, 30)
+dropList.Size = UDim2.new(0.66, 0, 0, 0)
+dropList.Position = UDim2.fromOffset(0, 60)
+dropList.Visible = false
+dropList.ClipsDescendants = true
+dropList.BackgroundTransparency = 0.05
+corner(dropList, 12)
+stroke(dropList, C.violet, 1.4, 0.3)
+
+local dropScroll = Instance.new("ScrollingFrame")
+dropScroll.BackgroundTransparency = 1
+dropScroll.Size = UDim2.new(1, -6, 1, -4)
+dropScroll.Position = UDim2.fromOffset(3, 2)
+dropScroll.ScrollBarThickness = 3
+dropScroll.ScrollBarImageColor3 = C.orchid
+dropScroll.BorderSizePixel = 0
+dropScroll.ZIndex = 31
+dropScroll.Parent = dropList
+
+local dropLayout = Instance.new("UIListLayout")
+dropLayout.Padding = UDim.new(0, 2)
+dropLayout.Parent = dropScroll
+
+local SelectedGame = nil
+local dropItems = {}
+
+local function updateDropSize()
+	local count = #dropItems
+	local height = math.min(count * 32 + 6, 190)
+	return height, count * 32
+end
+
+local function closeDrop()
+	if not dropList.Visible then return end
+	local h = dropList.AbsoluteSize.Y
+	tw(dropList, 0.22, { Size = UDim2.new(0.66, 0, 0, 0) }, Enum.EasingStyle.Quint, Enum.EasingDirection.In)
+	task.delay(0.22, function()
+		if dropList.Parent then dropList.Visible = false end
+	end)
+	dropArrow.Text = "v"
+	tw(dropArrow, 0.2, { Rotation = 0 })
+end
+
+local function openDrop()
+	dropList.Visible = true
+	dropList.Size = UDim2.new(0.66, 0, 0, 0)
+	local height, canvas = updateDropSize()
+	dropScroll.CanvasSize = UDim2.new(0, 0, 0, canvas)
+	tw(dropList, 0.3, { Size = UDim2.new(0.66, 0, 0, height) }, Enum.EasingStyle.Quint)
+	dropArrow.Text = "^"
+	tw(dropArrow, 0.2, { Rotation = 180 })
+	for i, btn in ipairs(dropItems) do
+		btn.TextTransparency = 1
+		btn.BackgroundTransparency = 1
+		task.delay(0.04 * i, function()
+			if btn.Parent then
+				tw(btn, 0.25, { TextTransparency = 0 }, Enum.EasingStyle.Quint)
+			end
+		end)
+	end
+end
+
+for i, gameName in ipairs(GamesList) do
+	local btn = Instance.new("TextButton")
+	btn.Text = "  " .. gameName
+	btn.FontFace = F_M
+	btn.TextSize = 13
+	btn.TextColor3 = C.dim
+	btn.TextXAlignment = Enum.TextXAlignment.Left
+	btn.BackgroundColor3 = C.surface
+	btn.BackgroundTransparency = 1
+	btn.Size = UDim2.new(1, -4, 0, 30)
+	btn.ZIndex = 32
+	btn.Parent = dropScroll
+	corner(btn, 8)
+	table.insert(dropItems, btn)
+
+	btn.MouseEnter:Connect(function()
+		tw(btn, 0.12, { BackgroundTransparency = 0.2, BackgroundColor3 = C.hover })
+		tw(btn, 0.12, { TextColor3 = C.moon })
+	end)
+	btn.MouseLeave:Connect(function()
+		tw(btn, 0.12, { BackgroundTransparency = 1, BackgroundColor3 = C.surface })
+		tw(btn, 0.12, { TextColor3 = C.dim })
+	end)
+	btn.MouseButton1Click:Connect(function()
+		SelectedGame = gameName
+		dropBtn.Text = "  " .. gameName
+		tw(dropBtn, 0.2, { TextColor3 = C.text })
+		closeDrop()
+	end)
+end
+
+dropBtn.MouseButton1Click:Connect(function()
+	if dropList.Visible then closeDrop() else openDrop() end
+end)
+
+UserInputService.InputBegan:Connect(function(input, gpe)
+	if gpe then return end
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		task.wait(0.05)
+		if dropList.Visible then
+			local mousePos = UserInputService:GetMouseLocation()
+			local absPos = dropList.AbsolutePosition
+			local size = dropList.AbsoluteSize
+			if not (mousePos.X >= absPos.X and mousePos.X <= absPos.X + size.X and mousePos.Y >= absPos.Y and mousePos.Y <= absPos.Y + size.Y) then
+				closeDrop()
+			end
+		end
+	end
+end)
+
+local loadBtn = Instance.new("TextButton")
+loadBtn.Text = "LOAD"
+loadBtn.FontFace = F_B
+loadBtn.TextSize = 14
+loadBtn.TextColor3 = C.moon
+loadBtn.TextTransparency = 1
+loadBtn.BackgroundColor3 = C.violet
+loadBtn.BackgroundTransparency = 1
+loadBtn.Size = UDim2.new(0.3, 0, 0, 36)
+loadBtn.Position = UDim2.new(0.68, 6, 0, 22)
+loadBtn.ZIndex = 5
+loadBtn.Parent = content
+corner(loadBtn, 11)
+local loadStroke = stroke(loadBtn, C.orchid, 1.3, 1)
+grad(loadBtn, Color3.fromRGB(150, 70, 255), Color3.fromRGB(90, 30, 180), 90)
+local loadGlows = glowLayers(loadBtn, C.glow, 2, 2, 11, 0.95)
+
+loadBtn.MouseEnter:Connect(function()
+	if loadBtn.Active then
+		tw(loadBtn, 0.15, { BackgroundColor3 = C.orchid, BackgroundTransparency = 0 })
+		tw(loadBtn, 0.15, { TextColor3 = Color3.fromRGB(255, 255, 255) })
+	end
+end)
+loadBtn.MouseLeave:Connect(function()
+	if loadBtn.Active then
+		tw(loadBtn, 0.15, { BackgroundColor3 = C.violet, BackgroundTransparency = 0.05 })
+		tw(loadBtn, 0.15, { TextColor3 = C.moon })
+	end
+end)
+
+local statusMsg = tx(content, "", F_R, 12, C.dim)
+statusMsg.Size = UDim2.new(1, 0, 0, 18)
+statusMsg.Position = UDim2.fromOffset(2, 72)
+statusMsg.ZIndex = 5
+statusMsg.Visible = false
+statusMsg.TextTransparency = 1
+
+local foot = tx(content, "drag top · RightControl to hide", F_R, 10, C.mute)
+foot.Size = UDim2.new(1, 0, 0, 14)
+foot.Position = UDim2.fromOffset(2, 128)
+foot.ZIndex = 5
+foot.TextTransparency = 1
+
+-- loading ring under status
+local loadRing = fr(content, 6)
+loadRing.Size = UDim2.fromOffset(16, 16)
+loadRing.Position = UDim2.fromOffset(2, 96)
+loadRing.Visible = false
+corner(loadRing, 20)
+local loadRingS = stroke(loadRing, C.orchid, 2, 0.2)
+
+local function setStatus(msg, col)
+	statusMsg.Text = msg
+	statusMsg.TextColor3 = col or C.dim
+	statusMsg.Visible = true
+	statusMsg.TextTransparency = 1
+	tw(statusMsg, 0.25, { TextTransparency = 0 })
+end
+
+local function animateClose(thenDestroy)
+	if closing then return end
+	closing = true
+	closeDrop()
+	-- fade children
+	tw(title, 0.2, { TextTransparency = 1 })
+	tw(sub, 0.2, { TextTransparency = 1 })
+	tw(closeBtn, 0.2, { TextTransparency = 1, BackgroundTransparency = 1 })
+	tw(gameLbl, 0.2, { TextTransparency = 1 })
+	tw(dropBtn, 0.2, { TextTransparency = 1 })
+	tw(dropArrow, 0.2, { TextTransparency = 1 })
+	tw(dropFrame, 0.25, { BackgroundTransparency = 1 })
+	tw(loadBtn, 0.25, { BackgroundTransparency = 1, TextTransparency = 1 })
+	tw(statusMsg, 0.2, { TextTransparency = 1 })
+	tw(foot, 0.2, { TextTransparency = 1 })
+	tw(night, 0.3, { BackgroundTransparency = 1 })
+	tw(haze, 0.3, { BackgroundTransparency = 1 })
+	tw(top, 0.3, { BackgroundTransparency = 1 })
+	tw(mainStroke, 0.3, { Transparency = 1 })
+	for _, g in ipairs(mainGlows) do tw(g, 0.3, { Transparency = 1 }) end
+	task.delay(0.12, function()
+		tw(main, 0.35, {
+			Size = UDim2.fromOffset(0, 0),
+			BackgroundTransparency = 1,
+		}, Enum.EasingStyle.Quint, Enum.EasingDirection.In)
+		task.delay(0.38, function()
+			if thenDestroy then
+				pcall(function() gui:Destroy() end)
+			else
+				main.Visible = false
+				closing = false
+			end
+		end)
+	end)
+end
+
+local function LoadGame()
+	if closing then return end
+	if not SelectedGame then
+		setStatus("select a game first", C.bad)
+		task.delay(2, function()
+			tw(statusMsg, 0.3, { TextTransparency = 1 })
+			task.delay(0.3, function() statusMsg.Visible = false end)
+		end)
+		return
+	end
+
+	local url = LOADSTRINGS[SelectedGame]
+	if not url or url == "" then
+		setStatus("script missing for " .. SelectedGame, C.bad)
+		return
+	end
+
+	loadBtn.Text = "..."
+	loadBtn.Active = false
+	tw(loadBtn, 0.2, { BackgroundTransparency = 0.4, TextColor3 = C.mute })
+	setStatus("summoning " .. SelectedGame .. "...", C.lilac)
+	loadRing.Visible = true
+	local spin = 0
+	local spinConn = RunService.RenderStepped:Connect(function(dt)
+		spin += dt * 280
+		loadRing.Rotation = spin
+	end)
+
+	task.spawn(function()
+		local success, err = pcall(function()
+			local httpGet = syn and syn.request or http and http.request or http_request or request or fluxus and fluxus.request
+			local body
+			if game and game.HttpGet then
+				local ok, res = pcall(function() return game:HttpGet(url) end)
+				if ok and type(res) == "string" and #res > 50 then
+					body = res
+				end
+			end
+			if not body and httpGet then
+				local ok, res = pcall(function()
+					return httpGet({ Url = url, Method = "GET" })
+				end)
+				if ok and type(res) == "table" then
+					body = res.Body or res.body
+				elseif ok and type(res) == "string" then
+					body = res
+				end
+			end
+			assert(type(body) == "string" and #body > 50, "empty script / blocked http")
+			local loader = loadstring or load
+			assert(loader, "loadstring missing")
+			local fn, compileErr = loader(body)
+			assert(fn, tostring(compileErr))
+			fn()
+		end)
+
+		if spinConn then spinConn:Disconnect() end
+		loadRing.Visible = false
+
+		if success then
+			setStatus(SelectedGame .. " awakened", C.good)
+			task.delay(0.7, function()
+				animateClose(true)
+			end)
+		else
+			setStatus("failed · " .. tostring(err):sub(1, 42), C.bad)
+			loadBtn.Text = "LOAD"
+			loadBtn.Active = true
+			tw(loadBtn, 0.2, { BackgroundTransparency = 0.05, TextColor3 = C.moon })
+			task.delay(3, function()
+				tw(statusMsg, 0.3, { TextTransparency = 1 })
+				task.delay(0.3, function() statusMsg.Visible = false end)
+			end)
+		end
+	end)
+end
+
+loadBtn.MouseButton1Click:Connect(LoadGame)
+
+closeBtn.MouseButton1Click:Connect(function()
+	animateClose(true)
+end)
+closeBtn.MouseEnter:Connect(function()
+	tw(closeBtn, 0.12, { BackgroundColor3 = C.hover, TextColor3 = C.moon, BackgroundTransparency = 0.15 })
+end)
+closeBtn.MouseLeave:Connect(function()
+	tw(closeBtn, 0.12, { BackgroundColor3 = C.surface, TextColor3 = C.dim, BackgroundTransparency = 0.3 })
+end)
+
+local draggingUI = false
+local dragStart, startPos
+local DZ = Instance.new("TextButton")
+DZ.Size = UDim2.new(1, -50, 1, 0)
+DZ.BackgroundTransparency = 1
+DZ.Text = ""
+DZ.ZIndex = 11
+DZ.Parent = top
+DZ.Active = true
+DZ.MouseButton1Down:Connect(function()
+	draggingUI = true
+	dragStart = UserInputService:GetMouseLocation()
+	startPos = main.AbsolutePosition
+end)
+UserInputService.InputChanged:Connect(function(inp)
+	if not draggingUI then return end
+	if inp.UserInputType == Enum.UserInputType.MouseMovement or inp.UserInputType == Enum.UserInputType.Touch then
+		local delta = UserInputService:GetMouseLocation() - dragStart
+		main.Position = UDim2.fromOffset(startPos.X + delta.X, startPos.Y + delta.Y)
+		main.AnchorPoint = Vector2.new(0, 0)
+	end
+end)
+UserInputService.InputEnded:Connect(function(inp)
+	if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
+		draggingUI = false
+	end
+end)
+
+UserInputService.InputBegan:Connect(function(inp, gp)
+	if gp or closing then return end
+	if inp.KeyCode == Enum.KeyCode.RightControl then
+		if main.Visible then
+			animateClose(false)
+		else
+			main.Visible = true
+			main.Size = UDim2.fromOffset(0, 0)
+			main.BackgroundTransparency = 1
+			tw(main, 0.4, { Size = UDim2.fromOffset(winW, winH), BackgroundTransparency = 0.05 }, Enum.EasingStyle.Back)
+			tw(mainStroke, 0.4, { Transparency = 0.25 })
+			for i, g in ipairs(mainGlows) do
+				tw(g, 0.4, { Transparency = 0.35 + i * 0.12 })
+			end
+		end
+	end
+end)
+
+local function playEntrance()
+	main.Visible = true
+	main.Size = UDim2.fromOffset(0, 0)
+	main.BackgroundTransparency = 1
+	mainStroke.Transparency = 1
+
+	tw(main, 0.55, {
+		Size = UDim2.fromOffset(winW, winH),
+		BackgroundTransparency = 0.05,
+	}, Enum.EasingStyle.Back)
+
+	tw(mainStroke, 0.5, { Transparency = 0.25 })
+	for i, g in ipairs(mainGlows) do
+		task.delay(0.05 * i, function()
+			tw(g, 0.5, { Transparency = 0.35 + i * 0.12 })
+		end)
+	end
+
+	task.delay(0.15, function()
+		tw(night, 0.4, { BackgroundTransparency = 0.35 })
+		tw(haze, 0.5, { BackgroundTransparency = 0.88 })
+		tw(top, 0.4, { BackgroundTransparency = 0.2 })
+	end)
+
+	task.delay(0.25, function()
+		moon.Visible = true
+		tw(title, 0.4, { TextTransparency = 0 }, Enum.EasingStyle.Quint)
+	end)
+	task.delay(0.35, function()
+		tw(sub, 0.4, { TextTransparency = 0 }, Enum.EasingStyle.Quint)
+	end)
+	task.delay(0.4, function()
+		tw(closeBtn, 0.35, { TextTransparency = 0, BackgroundTransparency = 0.3 })
+	end)
+	task.delay(0.48, function()
+		tw(gameLbl, 0.35, { TextTransparency = 0 })
+	end)
+	task.delay(0.55, function()
+		tw(dropFrame, 0.4, { BackgroundTransparency = 0.1 }, Enum.EasingStyle.Quint)
+		tw(dropStroke, 0.4, { Transparency = 0.35 })
+		tw(dropBtn, 0.35, { TextTransparency = 0 })
+		tw(dropArrow, 0.35, { TextTransparency = 0 })
+	end)
+	task.delay(0.62, function()
+		tw(loadBtn, 0.4, { BackgroundTransparency = 0.05, TextTransparency = 0 }, Enum.EasingStyle.Quint)
+		tw(loadStroke, 0.4, { Transparency = 0.2 })
+		for i, g in ipairs(loadGlows) do
+			tw(g, 0.4, { Transparency = 0.45 + i * 0.15 })
+		end
+	end)
+	task.delay(0.75, function()
+		tw(foot, 0.4, { TextTransparency = 0 })
+	end)
+end
+
+local function boot()
+	local bootFrame = bx(gui, C.void, 80)
+	bootFrame.Size = UDim2.fromOffset(0, 0)
+	bootFrame.Position = UDim2.fromScale(0.5, 0.5)
+	bootFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+	bootFrame.BackgroundTransparency = 1
+	corner(bootFrame, 16)
+	local bootStroke = stroke(bootFrame, C.violet, 1.6, 1)
+	local bootGlows = glowLayers(bootFrame, C.aura, 4, 5, 16, 0.95)
+	spawnStars(bootFrame, 16, 81)
+
+	tw(bootFrame, 0.45, {
+		Size = UDim2.fromOffset(320, 150),
+		BackgroundTransparency = 0,
+	}, Enum.EasingStyle.Back)
+	tw(bootStroke, 0.45, { Transparency = 0.25 })
+	for i, g in ipairs(bootGlows) do
+		task.delay(0.06 * i, function()
+			tw(g, 0.4, { Transparency = 0.3 + i * 0.12 })
+		end)
+	end
+
+	local moonB = makeMoon(bootFrame, 40, 82)
+	moonB.Position = UDim2.fromOffset(22, 22)
+	moonB.Visible = false
+
+	local bt = tx(bootFrame, "VALKYRIE", F_D, 20, C.moon)
+	bt.Size = UDim2.new(1, -80, 0, 28)
+	bt.Position = UDim2.fromOffset(74, 24)
+	bt.ZIndex = 83
+	bt.TextTransparency = 1
+
+	local st = tx(bootFrame, "awakening the night...", F_R, 12, C.lilac)
+	st.Size = UDim2.new(1, -44, 0, 18)
+	st.Position = UDim2.fromOffset(22, 78)
+	st.ZIndex = 83
+	st.TextTransparency = 1
+
+	local barBg = bx(bootFrame, C.surface, 83)
+	barBg.Size = UDim2.new(1, -44, 0, 6)
+	barBg.Position = UDim2.fromOffset(22, 112)
+	barBg.BackgroundTransparency = 1
+	corner(barBg, 4)
+	local barBgS = stroke(barBg, C.line, 1, 1)
+
+	local bar = bx(barBg, C.orchid, 84)
+	bar.Size = UDim2.new(0, 0, 1, 0)
+	corner(bar, 4)
+	grad(bar, C.lilac, C.violet, 0)
+
+	task.delay(0.2, function()
+		moonB.Visible = true
+		tw(bt, 0.4, { TextTransparency = 0 })
+	end)
+	task.delay(0.35, function()
+		tw(st, 0.35, { TextTransparency = 0 })
+		tw(barBg, 0.35, { BackgroundTransparency = 0 })
+		tw(barBgS, 0.35, { Transparency = 0.5 })
+	end)
+
+	local steps = {
+		"opening the void",
+		"calling the moon",
+		"binding scripts",
+		"night is ready",
+	}
+
+	task.spawn(function()
+		task.wait(0.5)
+		for i, step in ipairs(steps) do
+			st.TextTransparency = 0.5
+			st.Text = step
+			tw(st, 0.2, { TextTransparency = 0 })
+			tw(bar, 0.38, { Size = UDim2.new(i / #steps, 0, 1, 0) }, Enum.EasingStyle.Quint)
+			task.wait(0.34)
+		end
+		-- close boot
+		tw(bt, 0.2, { TextTransparency = 1 })
+		tw(st, 0.2, { TextTransparency = 1 })
+		tw(barBg, 0.25, { BackgroundTransparency = 1 })
+		tw(bootStroke, 0.3, { Transparency = 1 })
+		for _, g in ipairs(bootGlows) do tw(g, 0.3, { Transparency = 1 }) end
+		tw(bootFrame, 0.35, {
+			Size = UDim2.fromOffset(0, 0),
+			BackgroundTransparency = 1,
+		}, Enum.EasingStyle.Quint, Enum.EasingDirection.In)
+		task.wait(0.38)
+		pcall(function() bootFrame:Destroy() end)
+		playEntrance()
+	end)
+end
+
+boot()
